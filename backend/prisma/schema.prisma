@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum FrequencyType {
+  DAYS
+  MONTHS
+}
+
+enum SubscriptionStatus {
+  PENDING
+  AUTHORIZED
+  PAUSED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  IN_PROCESS
+  APPROVED
+  REJECTED
+  REFUNDED
+  CANCELLED
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  name          String
+  role          Role           @default(USER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subscriptions Subscription[]
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Plan {
+  id                  String         @id @default(uuid())
+  name                String
+  slug                String         @unique
+  description         String?
+  features            Json           @default("[]")
+  /// Precio en COP (entero, sin decimales)
+  price               Int
+  currency            String         @default("COP")
+  frequency           Int            @default(1)
+  frequencyType       FrequencyType  @default(MONTHS)
+  freeTrialDays       Int?
+  /// id del preapproval_plan en Mercado Pago
+  mpPreapprovalPlanId String?        @unique
+  isActive            Boolean        @default(true)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  subscriptions       Subscription[]
+}
+
+model Subscription {
+  /// También se envía a MP como external_reference
+  id              String             @id @default(uuid())
+  userId          String
+  planId          String
+  /// id del preapproval en Mercado Pago
+  mpPreapprovalId String?            @unique
+  status          SubscriptionStatus @default(PENDING)
+  /// Email del pagador en MP (en sandbox: el usuario comprador de prueba)
+  payerEmail      String
+  startDate       DateTime?
+  nextPaymentDate DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  user            User               @relation(fields: [userId], references: [id])
+  plan            Plan               @relation(fields: [planId], references: [id])
+  payments        Payment[]
+
+  @@index([userId, status])
+}
+
+model Payment {
+  id                    String        @id @default(uuid())
+  subscriptionId        String
+  mpPaymentId           String?       @unique
+  /// id del subscription_authorized_payment (factura de la suscripción)
+  mpAuthorizedPaymentId String?       @unique
+  amount                Int
+  currency              String        @default("COP")
+  status                PaymentStatus
+  statusDetail          String?
+  paidAt                DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  subscription          Subscription  @relation(fields: [subscriptionId], references: [id])
+
+  @@index([subscriptionId])
+}
+
+model WebhookEvent {
+  id             String    @id @default(uuid())
+  topic          String
+  action         String?
+  dataId         String
+  /// x-request-id de MP, usado para idempotencia
+  requestId      String?   @unique
+  payload        Json
+  signatureValid Boolean
+  processedAt    DateTime?
+  error          String?
+  createdAt      DateTime  @default(now())
+
+  @@index([topic, dataId])
+}
