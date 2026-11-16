@@ -4,11 +4,12 @@ services:
     container_name: subs-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: subs
-      POSTGRES_PASSWORD: subs
-      POSTGRES_DB: subscriptions
+      POSTGRES_USER: ${POSTGRES_USER:-subs}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-subs}
+      POSTGRES_DB: ${POSTGRES_DB:-subscriptions}
     ports:
-      - "5432:5432"
+      # Solo accesible desde este equipo (no desde la red local)
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 

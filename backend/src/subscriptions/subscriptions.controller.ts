@@ -1,6 +1,8 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { ApiCreatedResponse, ApiExtraModels, ApiOkResponse, ApiOperation, ApiParam, ApiTags, getSchemaPath } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { ApiAuth, ApiErrors } from '../common/api-docs.decorators';
+import { RATE_LIMITS, UserThrottlerGuard } from '../common/throttling';
 import { SubscriptionResponse, UserPaymentResponse } from '../common/api.schema';
 import { AuthUser, CurrentUser } from '../common/decorators';
 import { JwtAuthGuard } from '../common/guards';
@@ -23,6 +25,9 @@ export class SubscriptionsController {
   ) {}
 
   @Post()
+  // Límite por IP (guard global) y por usuario (UserThrottlerGuard, tras JwtAuthGuard): frena el card testing
+  @Throttle(RATE_LIMITS.subscribe)
+  @UseGuards(UserThrottlerGuard)
   @ApiOperation({
     summary: 'Suscribirse a un plan',
     description: [
@@ -40,6 +45,7 @@ export class SubscriptionsController {
     [400, 'Datos inválidos, plan sin sincronizar o Mercado Pago rechazó el alta'],
     [404, 'Plan no disponible'],
     [409, 'El usuario ya tiene una suscripción PENDING, AUTHORIZED o PAUSED'],
+    [429, 'Más de 5 intentos de alta en 10 minutos (por IP o por usuario)'],
     502,
   )
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateSubscriptionDto) {

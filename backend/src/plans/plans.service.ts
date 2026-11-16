@@ -91,7 +91,8 @@ export class PlansService {
   private toHttpError(e: unknown) {
     if (e instanceof MercadoPagoApiError) {
       this.logger.error(`MP ${e.status}: ${JSON.stringify(e.body)}`);
-      return new BadGatewayException({ message: `Mercado Pago: ${e.message}`, details: e.body });
+      // El cuerpo completo de MP queda solo en el log del servidor
+      return new BadGatewayException(`Mercado Pago: ${e.message}`);
     }
     return e as Error;
   }

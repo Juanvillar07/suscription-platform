@@ -11,6 +11,9 @@ import { JwtPayload } from './jwt.strategy';
 
 const sha256 = (v: string) => createHash('sha256').update(v).digest('hex');
 
+/** Hash bcrypt (coste 10, igual que las contraseñas reales) de un valor aleatorio que nadie conoce */
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync(randomBytes(32).toString('hex'), 10);
+
 export interface IssuedTokens {
   accessToken: string;
   refreshToken: string;
@@ -40,7 +43,10 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const user = await this.users.findByEmail(dto.email);
-    if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
+    // Siempre se ejecuta bcrypt (contra un hash ficticio si el email no existe) para que el
+    // tiempo de respuesta no revele qué emails están registrados.
+    const passwordOk = await bcrypt.compare(dto.password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
+    if (!user || !passwordOk) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
     return { user: this.toPublicUser(user), tokens: await this.issueTokens(user) };

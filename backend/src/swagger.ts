@@ -22,7 +22,11 @@ API de la plataforma de suscripciones con **Mercado Pago (Colombia, COP)**.
 ### Errores
 Todas las respuestas de error siguen el formato estándar de NestJS: \`{ statusCode, message, error }\`.
 Los errores que vienen de Mercado Pago se devuelven como \`400\`/\`502\` con \`message: "Mercado Pago: ..."\`
-y el cuerpo original en \`details\`.
+(el detalle completo queda solo en los logs del servidor).
+
+### Límites de peticiones
+Global: 120 peticiones/minuto por IP. Login: 5/min. Registro: 10/hora. Alta de suscripción: 5 cada 10 min
+por IP y por usuario. Al superarlos se responde \`429\`.
 
 ### Montos
 Todos los montos están en **pesos colombianos (COP)**, como enteros sin decimales.

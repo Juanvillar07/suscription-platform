@@ -27,7 +27,7 @@ docker-compose.yml   PostgreSQL 16
 docker compose up -d
 
 cd backend
-cp .env.example .env        # completa MP_ACCESS_TOKEN, JWT_ACCESS_SECRET, etc.
+cp .env.example .env        # completa MP_ACCESS_TOKEN, ADMIN_PASSWORD, JWT_ACCESS_SECRET, etc.
 npm install
 npx prisma migrate dev
 npx prisma db seed          # crea admin + planes Básico/Pro (y sus preapproval_plan en MP)
@@ -39,6 +39,17 @@ npm install
 npm run dev                 # http://localhost:5173 (proxy /api → :3000)
 ```
 Si ejecutaste el seed sin `MP_ACCESS_TOKEN`, entra como admin → *Admin › Planes › Sincronizar MP*.
+
+### Seguridad
+- Postgres solo escucha en `127.0.0.1` (no es accesible desde la red local).
+- Límites de peticiones (`@nestjs/throttler`): 120/min por IP en general; login 5/min, registro 10/hora y
+  alta de suscripción 5 cada 10 min (por IP y por usuario). Al superarlos la API responde `429`.
+- Cabeceras de seguridad con `helmet` (CSP, HSTS, nosniff, sin `X-Powered-By`).
+- Con `NODE_ENV=production` la API **no arranca** si `JWT_ACCESS_SECRET` es el de ejemplo o mide menos de 32
+  caracteres, si falta `MP_WEBHOOK_SECRET` o `MP_ACCESS_TOKEN`, o si `FRONTEND_URL` no usa https. Swagger queda
+  desactivado por defecto en producción.
+- El seed exige `ADMIN_PASSWORD` (sin valor por defecto; 12+ caracteres en producción).
+- Detrás de un proxy o CDN define `TRUST_PROXY` para que el rate limit use la IP real del cliente.
 
 ## 4. Webhooks en local
 ```bash

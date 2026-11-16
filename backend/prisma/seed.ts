@@ -30,7 +30,14 @@ const PLANS = [
 
 async function main() {
   const adminEmail = (process.env.ADMIN_EMAIL ?? 'admin@example.com').toLowerCase();
-  const adminPassword = process.env.ADMIN_PASSWORD ?? 'Admin123!';
+  // Sin contraseña por defecto: un valor conocido permitiría tomar el control del admin
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword) {
+    throw new Error('Define ADMIN_PASSWORD en backend/.env antes de ejecutar el seed');
+  }
+  if (process.env.NODE_ENV === 'production' && (adminPassword.length < 12 || adminPassword === 'Admin123!')) {
+    throw new Error('En producción ADMIN_PASSWORD debe tener al menos 12 caracteres y no ser el valor de ejemplo');
+  }
   await prisma.user.upsert({
     where: { email: adminEmail },
     update: {},

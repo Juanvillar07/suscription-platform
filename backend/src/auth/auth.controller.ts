@@ -8,7 +8,9 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
+import { RATE_LIMITS } from '../common/throttling';
 import { ApiAuth, ApiErrors } from '../common/api-docs.decorators';
 import { AuthResponse, MeResponse } from '../common/api.schema';
 import { AuthUser, CurrentUser } from '../common/decorators';
@@ -30,9 +32,10 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @Throttle(RATE_LIMITS.register)
   @ApiOperation({ summary: 'Crear cuenta', description: `Registra un usuario con rol USER e inicia sesión. ${SET_COOKIE_NOTE}` })
   @ApiCreatedResponse({ type: AuthResponse })
-  @ApiErrors(400, [409, 'El email ya está registrado'])
+  @ApiErrors(400, [409, 'El email ya está registrado'], [429, 'Más de 10 registros por hora desde la misma IP'])
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
     const { user, tokens } = await this.auth.register(dto);
     return { user, accessToken: this.setRefreshCookie(res, tokens) };
@@ -40,9 +43,10 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
+  @Throttle(RATE_LIMITS.login)
   @ApiOperation({ summary: 'Iniciar sesión', description: `Devuelve el usuario y un accessToken. ${SET_COOKIE_NOTE}` })
   @ApiOkResponse({ type: AuthResponse })
-  @ApiErrors(400, [401, 'Credenciales inválidas'])
+  @ApiErrors(400, [401, 'Credenciales inválidas'], [429, 'Más de 5 intentos por minuto desde la misma IP'])
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const { user, tokens } = await this.auth.login(dto);
     return { user, accessToken: this.setRefreshCookie(res, tokens) };
@@ -50,6 +54,7 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(200)
+  @Throttle(RATE_LIMITS.refresh)
   @ApiCookieAuth(REFRESH_COOKIE_AUTH)
   @ApiOperation({
     summary: 'Renovar el accessToken',
@@ -57,7 +62,7 @@ export class AuthController {
       'Lee la cookie `refresh_token`, la revoca y emite una nueva (rotación). Si se reutiliza un refresh token ya revocado se cierran todas las sesiones del usuario.',
   })
   @ApiOkResponse({ type: AuthResponse })
-  @ApiErrors([401, 'Sin refresh token, expirado o revocado'])
+  @ApiErrors([401, 'Sin refresh token, expirado o revocado'], 429)
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     try {
       const { user, tokens } = await this.auth.refresh(req.cookies?.[REFRESH_COOKIE]);

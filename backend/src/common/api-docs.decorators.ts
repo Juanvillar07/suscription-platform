@@ -9,6 +9,7 @@ const DEFAULT_DESCRIPTIONS: Record<number, string> = {
   403: 'No tienes permisos para este recurso',
   404: 'Recurso no encontrado',
   409: 'Conflicto con el estado actual',
+  429: 'Demasiados intentos: se superó el límite de peticiones',
   502: 'Mercado Pago no respondió correctamente',
 };
 

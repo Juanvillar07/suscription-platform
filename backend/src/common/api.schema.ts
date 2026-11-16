@@ -18,8 +18,6 @@ export class ErrorResponse {
   @ApiPropertyOptional({ example: 'Bad Request' })
   error?: string;
 
-  @ApiPropertyOptional({ description: 'Cuerpo original devuelto por Mercado Pago (solo en errores de MP)' })
-  details?: Record<string, unknown>;
 }
 
 // ---------- Usuarios / Auth ----------

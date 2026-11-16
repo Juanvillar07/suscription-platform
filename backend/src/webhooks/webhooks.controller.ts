@@ -1,5 +1,6 @@
 import { Body, Controller, Headers, HttpCode, Logger, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { ApiBody, ApiHeader, ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ApiErrors } from '../common/api-docs.decorators';
 import { WebhookAckResponse } from '../common/api.schema';
 import { MercadoPagoService } from '../mercadopago/mercadopago.service';
@@ -13,6 +14,8 @@ interface MpWebhookBody {
 }
 
 @ApiTags('Webhooks')
+// Mercado Pago envía ráfagas y reintentos desde pocas IPs: la protección aquí es la firma, no el rate limit
+@SkipThrottle()
 @Controller('webhooks')
 export class WebhooksController {
   private readonly logger = new Logger(WebhooksController.name);

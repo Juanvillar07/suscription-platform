@@ -58,7 +58,7 @@ export class SubscriptionsService {
       });
       return this.applyPreapproval(subscription.id, preapproval);
     } catch (e) {
-      this.logger.warn(`Alta rechazada para plan=${plan.slug} payer_email=${dto.payerEmail}`);
+      this.logger.warn(`Alta rechazada: user=${userId} plan=${plan.slug} subscription=${subscription.id}`);
       // Si MP rechaza el alta, no dejamos una suscripción PENDING huérfana
       await this.prisma.subscription.delete({ where: { id: subscription.id } });
       throw this.toHttpError(e);
@@ -159,7 +159,8 @@ export class SubscriptionsService {
     if (e instanceof MercadoPagoApiError) {
       this.logger.error(`MP ${e.status}: ${JSON.stringify(e.body)}`);
       const Ctor = e.status >= 500 ? BadGatewayException : BadRequestException;
-      return new Ctor({ message: `Mercado Pago: ${e.message}`, details: e.body });
+      // El cuerpo completo de MP queda solo en el log del servidor; al cliente va el mensaje
+      return new Ctor(`Mercado Pago: ${e.message}`);
     }
     return e as Error;
   }
